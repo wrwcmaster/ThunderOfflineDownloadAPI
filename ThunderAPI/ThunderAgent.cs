@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using Gaia.Common.Collections;
 using System.IO;
 using System.Runtime.Serialization.Json;
+using System.Net;
+using HtmlAgilityPack;
 
 namespace ThunderAPI
 {
@@ -22,6 +24,7 @@ namespace ThunderAPI
         private const string USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.106 Safari/535.2";
         private const string REFER = "http://lixian.vip.xunlei.com/";
         private Dictionary<string, string> _cookieStore = new Dictionary<string,string>();
+        private string _uid;
         private void ParseCookieInResponse(string setCookieHeader, IDictionary<string, string> cookieStore)
         {
             //TODO: move to commonlib, support path, domain, etc
@@ -93,6 +96,7 @@ namespace ThunderAPI
                 {
                     string setCookieHeader = res.Headers.Get("Set-Cookie");
                     ParseCookieInResponse(setCookieHeader, _cookieStore);
+                    _uid = _cookieStore["userid"];
                     return null;
                 }),
                 null
@@ -139,6 +143,74 @@ namespace ThunderAPI
                     return (BtTaskCommitResponse)new DataContractJsonSerializer(typeof(BtTaskCommitResponse)).Deserialize(json);
                 }
             }), null);
+        }
+
+        public TaskQueryResponse QueryTasks(int index, int pageSize)
+        {
+            return HttpHelper.SendRequest<TaskQueryResponse>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/showtask_unfresh?type_id=2&p=1&interfrom=task"), HttpMethod.GET, new List<IHttpRequestModifier>(){
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                new HttpRequestSimpleUriModifier("page", index.ToString()),
+                new HttpRequestSimpleUriModifier("tasknum", pageSize.ToString()),
+                new HttpRequestSimpleUriModifier("t", DateTime.Now.GetTimestamp().ToString())
+            }, new HttpResponseCustomParser<TaskQueryResponse>((res, control) =>
+            {
+                using (StreamReader sr = new StreamReader(res.GetResponseStream()))
+                {
+                    string responseStr = sr.ReadToEnd();
+                    string json = responseStr.Substring(7).Trim('(', ')');
+                    return (TaskQueryResponse)new DataContractJsonSerializer(typeof(TaskQueryResponse)).Deserialize(json);
+                }
+            }), null);
+        }
+
+        public KuaiUrlAnalysisResponse KuaiAnalyzeUrl(string url)
+        {
+            return HttpHelper.SendRequest<KuaiUrlAnalysisResponse>(new Uri("http://kuai.xunlei.com/webfilemail_interface?action=webfilemail_url_analysis"), HttpMethod.GET, new List<IHttpRequestModifier>(){
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                new HttpRequestSimpleUriModifier("url", url)
+            }, new HttpResponseJSONObjectParser<KuaiUrlAnalysisResponse>(), null);
+        }
+
+        public KuaiForwardResponse KuaiForwardOfflineDownloadTask(string cid, long fileSize, string gcid, string title, string url, string section)
+        {
+            var request = new KuaiForwardRequest()
+            {
+                Cid = cid,
+                FileSize = fileSize,
+                Gcid = gcid,
+                Title = title,
+                Url = url,
+                Section = section
+            };
+
+            var requestStr = new DataContractJsonSerializer(typeof(List<KuaiForwardRequest>)).Serialize(new List<KuaiForwardRequest>(){ request });
+
+            return HttpHelper.SendRequest<KuaiForwardResponse>(new Uri("http://kuai.xunlei.com/interface.php?action=lixian_forward_upload"), HttpMethod.POST, new List<IHttpRequestModifier>(){
+                new HttpRequestSimpleUriModifier("cachetime", DateTime.Now.GetTimestamp().ToString()),
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                new HttpRequestUrlEncodedFormModifier(new KeyValuePairList<string, string>(){
+                    { "data", requestStr }
+                })
+            }, new HttpResponseJSONObjectParser<KuaiForwardResponse>(), null);
+        }
+
+        public KuaiShortUrlResponse KuaiGetShortUrl(long taskId)
+        {
+            return HttpHelper.SendRequest<KuaiShortUrlResponse>(new Uri("http://kuai.xunlei.com/webfilemail_interface?action=webfilemail_get_short_url"), HttpMethod.GET, new List<IHttpRequestModifier>(){
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                new HttpRequestSimpleUriModifier("task_id", taskId.ToString()),
+                new HttpRequestSimpleUriModifier("from_uid", _uid)
+            }, new HttpResponseJSONObjectParser<KuaiShortUrlResponse>(), null);
+        }
+
+        public string KuaiGetActualUrl(string shortUrl)
+        {
+            WebClient client = new WebClient();
+            string html = client.DownloadString(shortUrl);
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(html);
+            var linkNode = doc.DocumentNode.SelectSingleNode("//div[@id='file-list']/ul/li/div[@class='file_tr']/span[@class='c_2']/a");
+            return linkNode.Attributes["href"].Value;
         }
 
         private string GenerateRandomValue()

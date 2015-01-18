@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="HtmlAgilityPack">
+      <HintPath>..\3rdParty\HtmlAgilityPack.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
@@ -42,8 +45,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="KuaiForwardRequest.cs" />
+    <Compile Include="KuaiForwardResponse.cs" />
+    <Compile Include="KuaiShortUrlResponse.cs" />
+    <Compile Include="KuaiUrlAnalysisResponse.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TaskQueryResponse.cs" />
     <Compile Include="ThunderAgent.cs" />
     <Compile Include="BtTaskCommitResponse.cs" />
     <Compile Include="TorrentUploadResponse.cs" />
