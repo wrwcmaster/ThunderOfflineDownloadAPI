@@ -103,6 +103,18 @@ namespace ThunderAPI
                 );
         }
 
+        public UrlQueryResult QueryUrl(string url)
+        {
+            string response = HttpHelper.SendRequest<string>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/url_query?callback=queryUrl&interfrom=task"), HttpMethod.GET, new List<IHttpRequestModifier>(){
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                new HttpRequestSimpleUriModifier("u", url),
+                new HttpRequestSimpleUriModifier("random", GenerateRandomValue()),
+                new HttpRequestSimpleUriModifier("tcache", DateTime.Now.GetTimestamp().ToString())
+            }, new HttpResponseStringParser(), null);
+
+            return (new UrlQueryResult.Parser()).Parse(response);
+        }
+
         public TorrentUploadResponse UploadTorrent(string fileName, Stream fileStream)
         {
             var parameters = new HttpRequestMultipartFormModifier(new KeyValuePairList<string, string>(){
@@ -145,11 +157,30 @@ namespace ThunderAPI
             }), null);
         }
 
-        public TaskQueryResponse QueryTasks(int index, int pageSize)
+        public BTDetailResponse QueryBTDetail(string cid, long taskId, int pageIndex)
         {
-            return HttpHelper.SendRequest<TaskQueryResponse>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/showtask_unfresh?type_id=2&p=1&interfrom=task"), HttpMethod.GET, new List<IHttpRequestModifier>(){
+            return HttpHelper.SendRequest<BTDetailResponse>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/fill_bt_list?callback=fill_bt_list&g_net=1&interfrom=task"), HttpMethod.GET, new List<IHttpRequestModifier>(){
                 new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
-                new HttpRequestSimpleUriModifier("page", index.ToString()),
+                new HttpRequestSimpleUriModifier("p", pageIndex.ToString()),
+                new HttpRequestSimpleUriModifier("infoid", cid),
+                new HttpRequestSimpleUriModifier("tid", taskId.ToString()),
+                new HttpRequestSimpleUriModifier("uid", _uid)
+            }, new HttpResponseCustomParser<BTDetailResponse>((res, control) =>
+            {
+                using (StreamReader sr = new StreamReader(res.GetResponseStream()))
+                {
+                    string responseStr = sr.ReadToEnd();
+                    string json = responseStr.Substring(23, responseStr.Length - 25);
+                    return (BTDetailResponse)new DataContractJsonSerializer(typeof(BTDetailResponse)).Deserialize(json);
+                }
+            }), null);
+        }
+
+        public TaskQueryResponse QueryTasks(int pageIndex, int pageSize)
+        {
+            return HttpHelper.SendRequest<TaskQueryResponse>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/showtask_unfresh?type_id=4&p=1&interfrom=task"), HttpMethod.GET, new List<IHttpRequestModifier>(){
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                new HttpRequestSimpleUriModifier("page", pageIndex.ToString()),
                 new HttpRequestSimpleUriModifier("tasknum", pageSize.ToString()),
                 new HttpRequestSimpleUriModifier("t", DateTime.Now.GetTimestamp().ToString())
             }, new HttpResponseCustomParser<TaskQueryResponse>((res, control) =>

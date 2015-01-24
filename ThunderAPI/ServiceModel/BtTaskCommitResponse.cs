@@ -11,7 +11,7 @@ namespace ThunderAPI
     public class BtTaskCommitResponse
     {
         [DataMember(Name = "id")]
-        public long Id { get; set; }
+        public long TaskId { get; set; }
         [DataMember(Name = "avail_space")]
         public long AvailableSpace { get; set; }
         [DataMember(Name = "time")]
