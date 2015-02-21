@@ -150,9 +150,22 @@ namespace ThunderAPI
             {
                 using (StreamReader sr = new StreamReader(res.GetResponseStream()))
                 {
+                    BtTaskCommitResponse commitResponse = null;
                     string responseStr = sr.ReadToEnd();
-                    string json = responseStr.Trim('(', ')');
-                    return (BtTaskCommitResponse)new DataContractJsonSerializer(typeof(BtTaskCommitResponse)).Deserialize(json);
+                    try
+                    {
+                        string json = responseStr.Trim('(', ')');
+                        commitResponse = (BtTaskCommitResponse)new DataContractJsonSerializer(typeof(BtTaskCommitResponse)).Deserialize(json);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException("Failed to commit bt task - " + responseStr + ".", ex);
+                    }
+                    if (commitResponse == null || commitResponse.TaskId == 0)
+                    {
+                        throw new InvalidOperationException("Failed to commit bt task - " + responseStr + ".");
+                    }
+                    return commitResponse;
                 }
             }), null);
         }
@@ -170,8 +183,15 @@ namespace ThunderAPI
                 using (StreamReader sr = new StreamReader(res.GetResponseStream()))
                 {
                     string responseStr = sr.ReadToEnd();
-                    string json = responseStr.Substring(23, responseStr.Length - 25);
-                    return (BTDetailResponse)new DataContractJsonSerializer(typeof(BTDetailResponse)).Deserialize(json);
+                    try
+                    {
+                        string json = responseStr.Substring(23, responseStr.Length - 25);
+                        return (BTDetailResponse)new DataContractJsonSerializer(typeof(BTDetailResponse)).Deserialize(json);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException("Failed to query BT detail: " + responseStr + ".", ex);
+                    }
                 }
             }), null);
         }
