@@ -65,7 +65,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\CommonLib\CommonLib\CommonLib.csproj">
+    <ProjectReference Include="..\..\Gaia.Common\CommonLib\CommonLib.csproj">
       <Project>{c586e3c8-1870-4054-833e-cf4322c31e44}</Project>
       <Name>CommonLib</Name>
     </ProjectReference>
