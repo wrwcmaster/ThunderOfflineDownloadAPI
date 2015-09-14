@@ -196,6 +196,26 @@ namespace ThunderAPI
             }), null);
         }
 
+        public HttpWebRequest PrivateDownload(string privateUrl)
+        {
+            if (!_cookieStore.ContainsKey("gdriveid"))
+            {
+                QueryTasks(1, 1); //Retrieve gdriveid for cookie
+            }
+            return HttpHelper.SendRequest(new Uri(privateUrl), HttpMethod.GET, new List<IHttpRequestModifier>
+            {
+                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore))
+            }, null);
+        }
+
+        public void PrivateDownload(string privateUrl, Stream outputStream)
+        {
+            var request = PrivateDownload(privateUrl);
+            HttpWebResponse response = request.GetResponse() as HttpWebResponse;
+            var inputSteam = response.GetResponseStream();
+            inputSteam.CopyTo(outputStream);
+        }
+
         public TaskQueryResponse QueryTasks(int pageIndex, int pageSize)
         {
             return HttpHelper.SendRequest<TaskQueryResponse>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/showtask_unfresh?type_id=4&p=1&interfrom=task"), HttpMethod.GET, new List<IHttpRequestModifier>(){
@@ -209,7 +229,12 @@ namespace ThunderAPI
                 {
                     string responseStr = sr.ReadToEnd();
                     string json = responseStr.Substring(7).Trim('(', ')');
-                    return (TaskQueryResponse)new DataContractJsonSerializer(typeof(TaskQueryResponse)).Deserialize(json);
+                    var rtn = (TaskQueryResponse)new DataContractJsonSerializer(typeof(TaskQueryResponse)).Deserialize(json);
+                    if (rtn != null && rtn.Info != null && rtn.Info.User != null)
+                    {
+                        _cookieStore["gdriveid"] = rtn.Info.User.Cookie;
+                    }
+                    return rtn;
                 }
             }), null);
         }
@@ -219,7 +244,16 @@ namespace ThunderAPI
             return HttpHelper.SendRequest<KuaiUrlAnalysisResponse>(new Uri("http://kuai.xunlei.com/webfilemail_interface?action=webfilemail_url_analysis"), HttpMethod.GET, new List<IHttpRequestModifier>(){
                 new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
                 new HttpRequestSimpleUriModifier("url", url)
-            }, new HttpResponseJSONObjectParser<KuaiUrlAnalysisResponse>(), null);
+            }, /*new HttpResponseJSONObjectParser<KuaiUrlAnalysisResponse>()*/
+             new HttpResponseCustomParser<KuaiUrlAnalysisResponse>((res, control) =>
+            {
+                using (StreamReader sr = new StreamReader(res.GetResponseStream()))
+                {
+                    string responseStr = sr.ReadToEnd();
+                    string json = responseStr;
+                    return (KuaiUrlAnalysisResponse)new DataContractJsonSerializer(typeof(KuaiUrlAnalysisResponse)).Deserialize(json);
+                }
+            }), null);
         }
 
         public KuaiForwardResponse KuaiForwardOfflineDownloadTask(string cid, long fileSize, string gcid, string title, string url, string section)

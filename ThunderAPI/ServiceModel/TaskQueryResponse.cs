@@ -20,6 +20,16 @@ namespace ThunderAPI
             public int TotalCount { get; set; }
             [DataMember(Name = "tasks")]
             public List<TaskInfo> TaskList { get; set; }
+            [DataMember(Name = "user")]
+            public UserInfo User { get; set; }
+
+            [DataContract]
+            public class UserInfo
+            {
+                [DataMember(Name = "cookie")]
+                public string Cookie { get; set; }
+                //TODO: read other fields
+            }
 
             [DataContract]
             public class TaskInfo
