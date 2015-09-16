@@ -263,7 +263,7 @@ namespace ThunderAPI
                 Cid = cid,
                 FileSize = fileSize,
                 Gcid = gcid,
-                Title = title,
+                Title = title + ".removethis",
                 Url = url,
                 Section = section
             };
