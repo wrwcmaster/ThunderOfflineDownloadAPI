@@ -51,7 +51,7 @@ namespace ThunderAPI
             [DataMember(Name = "dirtitle")]
             public string DirTitle { get; set; }
             [DataMember(Name = "is_blocked")]
-            public bool IsBlocked { get; set; }
+            public int IsBlocked { get; set; }
         }
     }
 }

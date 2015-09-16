@@ -53,7 +53,7 @@ namespace ThunderAPI
             [DataMember(Name = "ext")]
             public string Ext { get; set; }
             [DataMember(Name = "is_blocked")]
-            public bool IsBlocked { get; set; }
+            public int IsBlocked { get; set; }
         }
     }
 }

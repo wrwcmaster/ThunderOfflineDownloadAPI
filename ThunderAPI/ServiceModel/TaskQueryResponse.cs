@@ -61,7 +61,7 @@ namespace ThunderAPI
                 [DataMember(Name = "id")]
                 public string Id { get; set; }
                 [DataMember(Name = "is_blocked")]
-                public bool IsBlocked { get; set; }
+                public int IsBlocked { get; set; }
                 [DataMember(Name = "left_live_time")]
                 public string LeftLiveTime { get; set; }
                 [DataMember(Name = "list_sum")]
