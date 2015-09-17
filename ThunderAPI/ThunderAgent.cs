@@ -79,7 +79,7 @@ namespace ThunderAPI
         {
             string verifyCode = GetVerifyCode(userName);
             var md5 = MD5.Create();
-            string hashPassword = md5.GetMd5Hash(md5.GetMd5Hash((md5.GetMd5Hash(password))) + verifyCode.ToUpper());
+            string hashPassword = md5.GetHashedString(md5.GetHashedString((md5.GetHashedString(password))) + verifyCode.ToUpper());
             var parameters = new KeyValuePairList<string, string>(){
                 { "u", userName },
                 { "p", hashPassword },
@@ -139,6 +139,7 @@ namespace ThunderAPI
 
         public BtTaskCommitResponse CommitBtTask(string cid, IEnumerable<int> indexes)
         {
+            
             string indexStr = String.Join("_", indexes) + "_";
             return HttpHelper.SendRequest<BtTaskCommitResponse>(new Uri("http://dynamic.cloud.vip.xunlei.com/interface/bt_task_commit"), HttpMethod.POST, new List<IHttpRequestModifier>(){
                 new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),

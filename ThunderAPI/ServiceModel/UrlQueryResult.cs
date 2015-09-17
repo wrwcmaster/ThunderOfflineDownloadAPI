@@ -64,35 +64,45 @@ namespace ThunderAPI
 
             public UrlQueryResult Parse(string rawString)
             {
-                _stack = new Stack<dynamic>();
-                char[] array = rawString.ToCharArray();
-                for (int i = 0; i < array.Length; i++)
+                try
                 {
-                    char c = array[i];
-                    ReadChar(c);
-                }
-
-                var result = new UrlQueryResult();
-                result.Flag = Int32.Parse((string)_valueList[0]);
-                result.Cid = (string)_valueList[1];
-                result.Size = Int64.Parse((string)_valueList[2]);
-                result.Title = (string)_valueList[3];
-                result.isFull = ((string)_valueList[4]) == "1";
-                List<object> titleList = (List<object>) _valueList[5];
-                List<object> sizeList = (List<object>)_valueList[7];
-                List<object> indexList = (List<object>)_valueList[10];
-                result.FileList = new List<FileInfo>();
-                for (int i = 0; i < titleList.Count; i++)
-                {
-                    result.FileList.Add(new FileInfo()
+                    _stack = new Stack<dynamic>();
+                    char[] array = rawString.ToCharArray();
+                    for (int i = 0; i < array.Length; i++)
                     {
-                        FileName = (string) titleList[i],
-                        Size = Int64.Parse((string)sizeList[i]),
-                        Index = Int32.Parse((string)indexList[i])
-                    });
+                        char c = array[i];
+                        ReadChar(c);
+                    }
+
+                    var result = new UrlQueryResult();
+                    result.Flag = Int32.Parse((string)_valueList[0]);
+                    result.Cid = (string)_valueList[1];
+                    result.Size = Int64.Parse((string)_valueList[2]);
+                    result.Title = (string)_valueList[3];
+                    result.isFull = ((string)_valueList[4]) == "1";
+                    List<object> titleList = (List<object>)_valueList[5];
+                    List<object> sizeList = (List<object>)_valueList[7];
+                    List<object> indexList = (List<object>)_valueList[10];
+                    result.FileList = new List<FileInfo>();
+                    for (int i = 0; i < titleList.Count; i++)
+                    {
+                        result.FileList.Add(new FileInfo()
+                        {
+                            FileName = (string)titleList[i],
+                            Size = Int64.Parse((string)sizeList[i]),
+                            Index = Int32.Parse((string)indexList[i])
+                        });
+                    }
+                    result.Random = (string)_valueList[12];
+                    return result;
                 }
-                result.Random = (string)_valueList[12];
-                return result;
+                catch (Exception ex)
+                {
+                    Console.WriteLine("[ERROR] Failed to parse UrlQuery result: " + ex.Message);
+                    Console.WriteLine(rawString);
+                    throw;
+                }
+                
             }
 
             private void ReadChar(char c)
