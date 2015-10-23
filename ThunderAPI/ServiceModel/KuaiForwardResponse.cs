@@ -13,6 +13,15 @@ namespace ThunderAPI
         [DataMember(Name = "result")]
         public int ResultCode { get; set; }
         [DataMember(Name = "msg")]
-        public long ForwardTaskId { get; set; }
+        public string Message { get; set; }
+
+        public long ForwardTaskId {
+            get
+            {
+                long output = -1;
+                long.TryParse(Message, out output);
+                return output;
+            }
+        }
     }
 }

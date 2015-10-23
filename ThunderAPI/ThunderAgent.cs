@@ -21,10 +21,18 @@ namespace ThunderAPI
 {
     public class ThunderAgent
     {
+        private string _userName;
+        private string _password;
+        public bool IsLogin
+        {
+            get { return _cookieStore.ContainsKey("sessionid"); }
+        }
+
         private const string USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.106 Safari/535.2";
         private const string REFER = "http://lixian.vip.xunlei.com/";
         private Dictionary<string, string> _cookieStore = new Dictionary<string,string>();
         private string _uid;
+
         private void ParseCookieInResponse(string setCookieHeader, IDictionary<string, string> cookieStore)
         {
             //TODO: move to commonlib, support path, domain, etc
@@ -77,11 +85,14 @@ namespace ThunderAPI
 
         public void Login(string userName, string password)
         {
-            string verifyCode = GetVerifyCode(userName);
+            Console.WriteLine("Login");
+            _userName = userName;
+            _password = password;
+            string verifyCode = GetVerifyCode(_userName);
             var md5 = MD5.Create();
-            string hashPassword = md5.GetHashedString(md5.GetHashedString((md5.GetHashedString(password))) + verifyCode.ToUpper());
+            string hashPassword = md5.GetHashedString(md5.GetHashedString((md5.GetHashedString(_password))) + verifyCode.ToUpper());
             var parameters = new KeyValuePairList<string, string>(){
-                { "u", userName },
+                { "u", _userName },
                 { "p", hashPassword },
                 { "verifycode", verifyCode },
                 { "login_enable", "1" },
@@ -97,10 +108,34 @@ namespace ThunderAPI
                     string setCookieHeader = res.Headers.Get("Set-Cookie");
                     ParseCookieInResponse(setCookieHeader, _cookieStore);
                     _uid = _cookieStore["userid"];
+                    if (_cookieStore.ContainsKey("sessionid"))
+                    {
+                        Console.WriteLine("SessionID: " + _cookieStore["sessionid"]);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Login failed, session not established.");
+                    }
                     return null;
                 }),
                 null
                 );
+        }
+
+        public void Logout()
+        {
+            Console.WriteLine("Logout");
+            if (_cookieStore.ContainsKey("sessionid"))
+            {
+                string sessionId = _cookieStore["sessionid"];
+                var request = HttpHelper.BuildRequest(new Uri("http://login.xunlei.com/unregister"), HttpMethod.GET, new List<IHttpRequestModifier>()
+                {
+                    new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                    new HttpRequestSimpleUriModifier("sessionid", sessionId)
+                }, null);
+                var response = request.GetResponse();
+                _cookieStore.Clear();
+            }
         }
 
         public UrlQueryResult QueryUrl(string url)
@@ -203,7 +238,7 @@ namespace ThunderAPI
             {
                 QueryTasks(1, 1); //Retrieve gdriveid for cookie
             }
-            return HttpHelper.SendRequest(new Uri(privateUrl), HttpMethod.GET, new List<IHttpRequestModifier>
+            return HttpHelper.BuildRequest(new Uri(privateUrl), HttpMethod.GET, new List<IHttpRequestModifier>
             {
                 new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore))
             }, null);
@@ -271,13 +306,29 @@ namespace ThunderAPI
 
             var requestStr = new DataContractJsonSerializer(typeof(List<KuaiForwardRequest>)).Serialize(new List<KuaiForwardRequest>(){ request });
 
-            return HttpHelper.SendRequest<KuaiForwardResponse>(new Uri("http://kuai.xunlei.com/interface.php?action=lixian_forward_upload"), HttpMethod.POST, new List<IHttpRequestModifier>(){
-                new HttpRequestSimpleUriModifier("cachetime", DateTime.Now.GetTimestamp().ToString()),
-                new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
-                new HttpRequestUrlEncodedFormModifier(new KeyValuePairList<string, string>(){
-                    { "data", requestStr }
-                })
-            }, new HttpResponseJSONObjectParser<KuaiForwardResponse>(), null);
+            Func<KuaiForwardResponse> operation = () => {
+                Console.WriteLine("KuaiForwardOfflineDownloadTask");
+                return HttpHelper.SendRequest<KuaiForwardResponse>(new Uri("http://kuai.xunlei.com/interface.php?action=lixian_forward_upload"), HttpMethod.POST, new List<IHttpRequestModifier>(){
+                    new HttpRequestSimpleUriModifier("cachetime", DateTime.Now.GetTimestamp().ToString()),
+                    new HttpRequestSimpleHeaderModifier("Cookie", GenerateCookieHeaderForRequest(_cookieStore)),
+                    new HttpRequestUrlEncodedFormModifier(new KeyValuePairList<string, string>(){
+                        { "data", requestStr }
+                    })
+                }, new HttpResponseJSONObjectParser<KuaiForwardResponse>(), null);
+            };
+
+            //handle session expiration
+            //TODO: move to general logic
+            var result = operation();
+            if (result != null && result.ForwardTaskId == -1)
+            {
+                Console.WriteLine("Request Failed: " + result.Message);
+                Logout();
+                Login(_userName, _password);
+                result = operation();
+            }
+            Console.WriteLine(result.Message);
+            return result;
         }
 
         public KuaiShortUrlResponse KuaiGetShortUrl(long taskId)
